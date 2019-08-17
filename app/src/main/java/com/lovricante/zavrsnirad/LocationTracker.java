@@ -17,7 +17,6 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.clans.fab.FloatingActionButton;
@@ -30,9 +29,9 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.JointType;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.karumi.dexter.Dexter;
 import com.karumi.dexter.PermissionToken;
@@ -40,6 +39,8 @@ import com.karumi.dexter.listener.PermissionDeniedResponse;
 import com.karumi.dexter.listener.PermissionGrantedResponse;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.single.PermissionListener;
+
+import java.util.List;
 
 public class LocationTracker extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
     private FloatingActionButton finishButton;
@@ -56,6 +57,8 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
 
     private LocationManager locationManager;
     private LatLng latLng;
+    private long time;
+    private List<TimePlace> positionHistory;
     private LatLng prevLocation;
     private boolean isPermission;
     private boolean isFirstRun = true;
@@ -100,27 +103,33 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
         mMap = googleMap;
 
         if (latLng != null) {
-            if(isFirstRun) {
-                prevLocation = latLng;
+            if (isFirstRun) {
                 mMap.addMarker(new MarkerOptions().position(latLng).title("Starting position"));
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16f));
+
                 if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     mMap.setMyLocationEnabled(true);
                 }
+
                 isFirstRun = false;
             } else {
                 float[] distanceResult = new float[1];
                 Location.distanceBetween(prevLocation.latitude, prevLocation.longitude, latLng.latitude, latLng.longitude, distanceResult);
+
                 if (distanceResult[0] > 3.0) {
                     mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
                     mMap.addPolyline(new PolylineOptions()
                             .add(prevLocation, latLng)
                             .width(20)
-                            .color(Color.CYAN));
-
-                    prevLocation = latLng;
+                            .color(Color.CYAN)
+                            .jointType(JointType.ROUND));
                 }
             }
+
+            prevLocation = latLng;
+            time = System.currentTimeMillis();
+
+            positionHistory.add(new TimePlace(latLng, time));
         }
     }
 
