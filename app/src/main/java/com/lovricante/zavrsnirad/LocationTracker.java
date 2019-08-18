@@ -23,6 +23,7 @@ import com.github.clans.fab.FloatingActionButton;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -40,7 +41,7 @@ import com.karumi.dexter.listener.PermissionGrantedResponse;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.single.PermissionListener;
 
-import java.util.List;
+import java.util.ArrayList;
 
 public class LocationTracker extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
     private FloatingActionButton finishButton;
@@ -51,15 +52,19 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
     private Location mLocation;
     private LocationManager mLocationManager;
     private LocationRequest mLocationRequest;
-    private com.google.android.gms.location.LocationListener listener;
-    private long UPDATE_INTERVAL = 2000;  /* 2 sec */
-    private long FASTEST_INTERVAL = 500; /* 0.5 sec */
+    private LocationListener listener;
+    private static final long UPDATE_INTERVAL = 2000;  /* 2 sec */
+    private static final long FASTEST_INTERVAL = 500; /* 0.5 sec */
 
     private LocationManager locationManager;
-    private LatLng latLng;
-    private long time;
-    private List<TimePlace> positionHistory;
     private LatLng prevLocation;
+    private LatLng latLng;
+
+    private long startTime;
+    private long currentTime;
+    private ArrayList<TimePlace> positionHistory;
+
+    private float totalDistance;
     private boolean isPermission;
     private boolean isFirstRun = true;
 
@@ -94,16 +99,40 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
     }
 
     public void returnToMainActivity() {
-        Intent intent = new Intent(this, MainActivity.class);
-        startActivity(intent);
+        Log.d("Debug","return to main activity, send data");
+        Intent data = new Intent(this, MainActivity.class);
+
+        data.putExtra("time_place_list", new TimePlaceArrayListWrapper(positionHistory));
+
+        setResult(RESULT_OK, data);
+        finish();
+    }
+
+    @Override
+    public void onBackPressed() {
+        Log.d("Debug","Back pressed");
+
+        setResult(RESULT_CANCELED);
+        finish();
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
+        float[] distanceResult = new float[1];
+        currentTime = System.currentTimeMillis();
         mMap = googleMap;
+
 
         if (latLng != null) {
             if (isFirstRun) {
+                distanceResult[0] = 0;
+                totalDistance = 0;
+                startTime = System.currentTimeMillis();
+                positionHistory = new ArrayList<>();
+
+                mMap.getUiSettings().setMapToolbarEnabled(false);
+                mMap.getUiSettings().setZoomControlsEnabled(false);
+
                 mMap.addMarker(new MarkerOptions().position(latLng).title("Starting position"));
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16f));
 
@@ -111,10 +140,13 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                     mMap.setMyLocationEnabled(true);
                 }
 
+                prevLocation = latLng;
+                positionHistory.add(new TimePlace(latLng, currentTime));
+
                 isFirstRun = false;
             } else {
-                float[] distanceResult = new float[1];
                 Location.distanceBetween(prevLocation.latitude, prevLocation.longitude, latLng.latitude, latLng.longitude, distanceResult);
+                totalDistance = totalDistance + distanceResult[0];
 
                 if (distanceResult[0] > 3.0) {
                     mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
@@ -123,13 +155,11 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                             .width(20)
                             .color(Color.CYAN)
                             .jointType(JointType.ROUND));
+
+                    prevLocation = latLng;
+                    positionHistory.add(new TimePlace(latLng, currentTime));
                 }
             }
-
-            prevLocation = latLng;
-            time = System.currentTimeMillis();
-
-            positionHistory.add(new TimePlace(latLng, time));
         }
     }
 
@@ -163,8 +193,8 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
 
     @Override
     public void onLocationChanged(Location location) {
-        String msg = "Updated Location: " + location.getLatitude() + "," + location.getLongitude();
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        /*String msg = "Updated Location: " + location.getLatitude() + "," + location.getLongitude();
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();*/
         // You can now create a LatLng Object for use with maps
         latLng = new LatLng(location.getLatitude(), location.getLongitude());
 
@@ -185,7 +215,7 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
             return;
         }
         LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-        Log.d("reque", "--->>>>");
+        Log.d("requeue", "--->>>>");
     }
 
     @Override

@@ -8,9 +8,13 @@ import com.github.clans.fab.FloatingActionButton;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     FloatingActionMenu FABMenu;
@@ -58,10 +62,17 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == NEW_ACTIVITY_REQUEST) {
             // Make sure the request was successful
             if (resultCode == RESULT_OK) {
-                // The user picked a contact.
-                // The Intent's data Uri identifies which contact was selected.
+                TimePlaceArrayListWrapper packedData = (TimePlaceArrayListWrapper) data.getSerializableExtra("time_place_list");
 
-                // Do something with the contact here (bigger example below)
+                if (packedData == null) {
+                    Log.d("OnActivityResult", "Position Data is NULL");
+                    return;
+                }
+
+                ArrayList<TimePlace> positionData = packedData.getTimePlaces();
+                for (TimePlace it : positionData) {
+                    Log.d("OnActivityResult", "positionData - time:" + it.getTime());
+                }
             }
         }
     }
