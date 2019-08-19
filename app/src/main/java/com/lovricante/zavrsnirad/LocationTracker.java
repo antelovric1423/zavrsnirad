@@ -259,6 +259,7 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
     protected void onStop() {
         super.onStop();
         if (mGoogleApiClient.isConnected()) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
             mGoogleApiClient.disconnect();
         }
     }
