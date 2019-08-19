@@ -17,6 +17,7 @@ import android.view.MenuItem;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
+    DatabaseHelper databaseHelper;
     FloatingActionMenu FABMenu;
     FloatingActionButton FABRun, FABWalk, FABDrive;
 
@@ -30,29 +31,9 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FABMenu = (FloatingActionMenu) findViewById(R.id.fab_menu);
-        FABWalk = (FloatingActionButton) findViewById(R.id.fab_walk);
-        FABRun = (FloatingActionButton) findViewById(R.id.fab_run);
-        FABDrive = (FloatingActionButton) findViewById(R.id.fab_drive);
+        setButtonListeners();
 
-        FABWalk.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                newActivityType = "Walk";
-                startTracking();
-            }
-        });
-        FABRun.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                newActivityType = "Run";
-                startTracking();
-            }
-        });
-        FABDrive.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                newActivityType = "Drive";
-                startTracking();
-            }
-        });
+        databaseHelper = new DatabaseHelper(this.getApplicationContext());
     }
 
     @Override
@@ -79,6 +60,32 @@ public class MainActivity extends AppCompatActivity {
     public void startTracking() {
         Intent intent = new Intent(this, LocationTracker.class);
         startActivityForResult(intent, NEW_ACTIVITY_REQUEST);
+    }
+
+    private void setButtonListeners() {
+        FABMenu = (FloatingActionMenu) findViewById(R.id.fab_menu);
+        FABWalk = (FloatingActionButton) findViewById(R.id.fab_walk);
+        FABRun = (FloatingActionButton) findViewById(R.id.fab_run);
+        FABDrive = (FloatingActionButton) findViewById(R.id.fab_drive);
+
+        FABWalk.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                newActivityType = "Walk";
+                startTracking();
+            }
+        });
+        FABRun.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                newActivityType = "Run";
+                startTracking();
+            }
+        });
+        FABDrive.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                newActivityType = "Drive";
+                startTracking();
+            }
+        });
     }
 
     @Override
