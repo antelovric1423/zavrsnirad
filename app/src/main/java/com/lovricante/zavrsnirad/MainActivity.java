@@ -5,6 +5,7 @@ import android.os.Bundle;
 
 import com.github.clans.fab.FloatingActionMenu;
 import com.github.clans.fab.FloatingActionButton;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
@@ -13,14 +14,13 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     FloatingActionMenu FABMenu;
     FloatingActionButton FABRun, FABWalk, FABDrive;
 
-    String newActivity;
+    String newActivityType;
     static final int NEW_ACTIVITY_REQUEST = 1;
 
     @Override
@@ -37,20 +37,19 @@ public class MainActivity extends AppCompatActivity {
 
         FABWalk.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                newActivity = "Walk";
-                startTracking();
+                newActivityType = "Walk";
                 startTracking();
             }
         });
         FABRun.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                newActivity = "Run";
+                newActivityType = "Run";
                 startTracking();
             }
         });
         FABDrive.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                newActivity = "Drive";
+                newActivityType = "Drive";
                 startTracking();
             }
         });

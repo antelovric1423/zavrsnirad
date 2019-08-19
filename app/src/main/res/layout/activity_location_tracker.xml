@@ -8,15 +8,51 @@
     xmlns:fab="http://schemas.android.com/apk/res-auto"
     tools:context=".LocationTracker">
 
-    <fragment
-        xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:map="http://schemas.android.com/apk/res-auto"
-        xmlns:tools="http://schemas.android.com/tools"
-        android:id="@+id/map"
-        android:name="com.google.android.gms.maps.SupportMapFragment"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".LocationTracker" />
+        android:layout_gravity="bottom"
+        android:orientation="vertical">
+
+        <fragment
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:map="http://schemas.android.com/apk/res-auto"
+            xmlns:tools="http://schemas.android.com/tools"
+            android:id="@+id/map"
+            android:name="com.google.android.gms.maps.SupportMapFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="9"
+            tools:context=".LocationTracker" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginBottom="7dp"
+            android:layout_marginTop="7dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/timePassedTextView"
+                android:text="Time: 00:00"
+                android:textSize="16dp"
+                android:layout_weight="1"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/distancePassedTextView"
+                android:text="Distance: 0m"
+                android:textSize="16dp"
+                android:layout_marginLeft="7dp"
+                android:layout_weight="1"/>
+        </LinearLayout>
+    </LinearLayout>
 
     <com.github.clans.fab.FloatingActionButton
         android:id="@+id/fab_finish"

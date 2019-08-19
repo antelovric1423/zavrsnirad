@@ -14,9 +14,11 @@ import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.clans.fab.FloatingActionButton;
@@ -42,6 +44,7 @@ import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.single.PermissionListener;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class LocationTracker extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
     private FloatingActionButton finishButton;
@@ -53,7 +56,7 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
     private LocationManager mLocationManager;
     private LocationRequest mLocationRequest;
     private LocationListener listener;
-    private static final long UPDATE_INTERVAL = 2000;  /* 2 sec */
+    private static final long UPDATE_INTERVAL = 1000;  /* 1 sec */
     private static final long FASTEST_INTERVAL = 500; /* 0.5 sec */
 
     private LocationManager locationManager;
@@ -67,6 +70,25 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
     private float totalDistance;
     private boolean isPermission;
     private boolean isFirstRun = true;
+
+    private TextView timeTrackerTextView;
+    private TextView distanceTrackerTextView;
+
+    Handler timerHandler = new Handler();
+    Runnable timerRunnable = new Runnable() {
+
+        @Override
+        public void run() {
+            long timeDiff = System.currentTimeMillis() - startTime;
+            int seconds = (int) (timeDiff / 1000);
+            int minutes = seconds / 60;
+            seconds = seconds % 60;
+
+            timeTrackerTextView.setText(String.format(Locale.getDefault(), "Time: %02d:%02d", minutes, seconds));
+
+            timerHandler.postDelayed(this, 500);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,10 +118,16 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                 returnToMainActivity();
             }
         });
+
+        timeTrackerTextView = findViewById(R.id.timePassedTextView);
+        distanceTrackerTextView = findViewById(R.id.distancePassedTextView);
     }
 
     public void returnToMainActivity() {
-        Log.d("Debug","return to main activity, send data");
+        Log.d("LocationTracker.java", "Stop timer, return to main activity, send data");
+
+        timerHandler.removeCallbacks(timerRunnable);
+
         Intent data = new Intent(this, MainActivity.class);
 
         data.putExtra("time_place_list", new TimePlaceArrayListWrapper(positionHistory));
@@ -110,7 +138,7 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
 
     @Override
     public void onBackPressed() {
-        Log.d("Debug","Back pressed");
+        Log.d("LocationTracker.java", "Back pressed");
 
         setResult(RESULT_CANCELED);
         finish();
@@ -128,6 +156,7 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                 distanceResult[0] = 0;
                 totalDistance = 0;
                 startTime = System.currentTimeMillis();
+                timerHandler.postDelayed(timerRunnable, 0);
                 positionHistory = new ArrayList<>();
 
                 mMap.getUiSettings().setMapToolbarEnabled(false);
@@ -146,9 +175,8 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                 isFirstRun = false;
             } else {
                 Location.distanceBetween(prevLocation.latitude, prevLocation.longitude, latLng.latitude, latLng.longitude, distanceResult);
-                totalDistance = totalDistance + distanceResult[0];
 
-                if (distanceResult[0] > 3.0) {
+                if (distanceResult[0] > 1.0) {
                     mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
                     mMap.addPolyline(new PolylineOptions()
                             .add(prevLocation, latLng)
@@ -158,6 +186,9 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
 
                     prevLocation = latLng;
                     positionHistory.add(new TimePlace(latLng, currentTime));
+
+                    totalDistance = totalDistance + distanceResult[0];
+                    distanceTrackerTextView.setText(String.format(Locale.getDefault(), "Distance: %dm", totalDistance));
                 }
             }
         }
@@ -193,8 +224,6 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
 
     @Override
     public void onLocationChanged(Location location) {
-        /*String msg = "Updated Location: " + location.getLatitude() + "," + location.getLongitude();
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();*/
         // You can now create a LatLng Object for use with maps
         latLng = new LatLng(location.getLatitude(), location.getLongitude());
 
