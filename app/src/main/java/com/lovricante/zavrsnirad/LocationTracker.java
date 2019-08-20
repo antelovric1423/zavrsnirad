@@ -1,11 +1,5 @@
 package com.lovricante.zavrsnirad;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.core.app.ActivityCompat;
-import androidx.fragment.app.FragmentActivity;
-
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -21,8 +15,13 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.github.clans.fab.FloatingActionButton;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.ActivityCompat;
+import androidx.fragment.app.FragmentActivity;
 
+import com.github.clans.fab.FloatingActionButton;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
@@ -47,34 +46,27 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 public class LocationTracker extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
+    private static final String TAG = "LocationTracker";
+    private static final long UPDATE_INTERVAL = 1000;  /* 1 sec */
+    private static final long FASTEST_INTERVAL = 500; /* 0.5 sec */
+    Handler timerHandler = new Handler();
     private FloatingActionButton finishButton;
     private GoogleMap mMap;
-
-    private static final String TAG = "LocationTracker";
     private GoogleApiClient mGoogleApiClient;
     private Location mLocation;
     private LocationManager mLocationManager;
     private LocationRequest mLocationRequest;
     private LocationListener listener;
-    private static final long UPDATE_INTERVAL = 1000;  /* 1 sec */
-    private static final long FASTEST_INTERVAL = 500; /* 0.5 sec */
-
     private LocationManager locationManager;
     private LatLng prevLocation;
     private LatLng latLng;
-
     private long startTime;
     private long currentTime;
     private ArrayList<TimePlace> positionHistory;
-
     private float totalDistance;
     private boolean isPermission;
     private boolean isFirstRun = true;
-
     private TextView timeTrackerTextView;
-    private TextView distanceTrackerTextView;
-
-    Handler timerHandler = new Handler();
     Runnable timerRunnable = new Runnable() {
 
         @Override
@@ -89,6 +81,7 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
             timerHandler.postDelayed(this, 500);
         }
     };
+    private TextView distanceTrackerTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,6 +103,9 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
             mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
             checkLocation(); //check whether location service is enabled or not in your  phone
+
+            Intent intent = getIntent();
+            intent.getStringExtra("activityType");
         }
 
         finishButton = (FloatingActionButton) findViewById(R.id.fab_finish);
@@ -130,7 +126,8 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
 
         Intent data = new Intent(this, MainActivity.class);
 
-        data.putExtra("time_place_list", new TimePlaceArrayListWrapper(positionHistory));
+        data.putExtra("time_place_list",
+                new ActivityData("", startTime, currentTime - startTime, totalDistance, positionHistory));
 
         setResult(RESULT_OK, data);
         finish();

@@ -2,27 +2,25 @@ package com.lovricante.zavrsnirad;
 
 import android.content.Intent;
 import android.os.Bundle;
-
-import com.github.clans.fab.FloatingActionMenu;
-import com.github.clans.fab.FloatingActionButton;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-import android.util.Log;
-import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
+import com.github.clans.fab.FloatingActionButton;
+import com.github.clans.fab.FloatingActionMenu;
 
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
+    static final int NEW_ACTIVITY_REQUEST = 1;
     DatabaseHelper databaseHelper;
     FloatingActionMenu FABMenu;
     FloatingActionButton FABRun, FABWalk, FABDrive;
-
     String newActivityType;
-    static final int NEW_ACTIVITY_REQUEST = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,23 +40,30 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == NEW_ACTIVITY_REQUEST) {
             // Make sure the request was successful
             if (resultCode == RESULT_OK) {
-                TimePlaceArrayListWrapper packedData = (TimePlaceArrayListWrapper) data.getSerializableExtra("time_place_list");
-
-                if (packedData == null) {
-                    Log.d("OnActivityResult", "Position Data is NULL");
+                ActivityData receivedData = (ActivityData) data.getSerializableExtra("time_place_list");
+                if (receivedData == null) {
+                    Log.d("OnActivityResult", "Received Data is NULL");
+                    return;
+                }
+                ArrayList<TimePlace> positionData = receivedData.getTimePlaces();
+                if (positionData.size() < 2) {
+                    Log.d("OnActivityResult", "Not enough entries in positionData to acknowledge activity");
                     return;
                 }
 
-                ArrayList<TimePlace> positionData = packedData.getTimePlaces();
                 for (TimePlace it : positionData) {
                     Log.d("OnActivityResult", "positionData - time:" + it.getTime());
                 }
+
+                //databaseHelper.insertActivity(receivedData); TODO: ENABLE INSERTION OF ACTIVITIES AFTER DATA IS PROCESSED AND PRINTED OUT IN LAYOUT
             }
         }
     }
 
     public void startTracking() {
         Intent intent = new Intent(this, LocationTracker.class);
+        intent.putExtra("activityType", newActivityType);
+
         startActivityForResult(intent, NEW_ACTIVITY_REQUEST);
     }
 
