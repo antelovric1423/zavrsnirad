@@ -185,7 +185,7 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                     positionHistory.add(new TimePlace(latLng, currentTime));
 
                     totalDistance = totalDistance + distanceResult[0];
-                    distanceTrackerTextView.setText(String.format(Locale.getDefault(), "Distance: %dm", totalDistance));
+                    distanceTrackerTextView.setText(String.format(Locale.getDefault(), "Distance: %fm", totalDistance));
                 }
             }
         }
