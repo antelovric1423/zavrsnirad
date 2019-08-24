@@ -57,6 +57,13 @@ public class MainActivity extends AppCompatActivity {
         cardCreator = new ActivityCardCreator();
 
         directionsContainer = findViewById(R.id.directionsContainer);
+
+        ArrayList<ActivityData> activityList = databaseHelper.getAllActivities();
+        for (ActivityData it : activityList) {
+            if (it.getTimePlaces().size()!=0) {
+                processActivityData(it);
+            }
+        }
     }
 
     @Override
@@ -76,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 processActivityData(receivedData);
-                //databaseHelper.insertActivity(receivedData); TODO: ENABLE INSERTION OF ACTIVITIES AFTER DATA IS PROCESSED AND PRINTED OUT IN LAYOUT
+                databaseHelper.insertActivity(receivedData);
             }
         }
     }
@@ -186,16 +193,16 @@ public class MainActivity extends AppCompatActivity {
             float d = getResources().getDisplayMetrics().density;
 
             int dpValue = 8; // margin in dips
-            int margin = (int)(dpValue * d); // margin in pixels
+            int margin = (int) (dpValue * d); // margin in pixels
             LinearLayout.LayoutParams cardLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT);
             cardLayoutParams.setMargins(margin, margin, margin, margin);
             card.setLayoutParams(cardLayoutParams);
-            card.setRadius((int)(4*d));
+            card.setRadius((int) (4 * d));
 
             LinearLayout.LayoutParams chartLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT);
-            chartLayoutParams.height = (int)(200*d);
+            chartLayoutParams.height = (int) (200 * d);
             stChart.setLayoutParams(chartLayoutParams);
             vtChart.setLayoutParams(chartLayoutParams);
 
@@ -205,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
 
             LinearLayout.LayoutParams textLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT);
-            textLayoutParams.leftMargin = (int)(4*d);
+            textLayoutParams.leftMargin = (int) (4 * d);
             activityTypeTextView.setLayoutParams(textLayoutParams);
             activityStartTimeTextView.setLayoutParams(textLayoutParams);
             activityDurationTextView.setLayoutParams(textLayoutParams);
@@ -218,25 +225,25 @@ public class MainActivity extends AppCompatActivity {
             Log.d("function_entry", "processDataToViews " + data.getActivityType());
 
             activityTypeTextView.setText("Activity: " + data.getActivityType());
-            Log.d("text","" + activityTypeTextView.getText());
+            Log.d("text", "" + activityTypeTextView.getText());
             activityStartTimeTextView.setText("Date and time: " + getDateTimeStr(data.getStartTime()));
-            Log.d("text","" +activityStartTimeTextView.getText() );
+            Log.d("text", "" + activityStartTimeTextView.getText());
             activityDurationTextView.setText("Duration: " +
                     String.format("%02d:%02d", (int) (data.getDuration() / 60), (int) (data.getDuration() % 60)));
-            Log.d("text","" + activityDurationTextView.getText());
+            Log.d("text", "" + activityDurationTextView.getText());
             activityDistanceTraveledTextView.setText("Distance traveled: " + String.format("%.2f", data.getDistance()) + "m");
-            Log.d("text",""+ activityDistanceTraveledTextView.getText());
+            Log.d("text", "" + activityDistanceTraveledTextView.getText());
             averageVelocityTextView.setText("Avg velocity: " + String.format("%.2f", data.getDistance() / data.getDuration()) + "m/s");
-            Log.d("text",""+ averageVelocityTextView.getText());
+            Log.d("text", "" + averageVelocityTextView.getText());
 
             VelocityData velocityData = analyzeTimePlaceDataForVelocity(data.getTimePlaces());
 
             maxVelocityTextView.setText("Max velocity: " + String.format("%.2f", velocityData.getMaxVelocity()) + "m/s");
-            Log.d("text","" + maxVelocityTextView.getText());
+            Log.d("text", "" + maxVelocityTextView.getText());
 
             setupLineChart(stChart, generateTimePlaceData(data.getTimePlaces()));
             setupLineChart(vtChart, generateVelocityData(velocityData));
-            Log.d("function_exit","processDataToViews");
+            Log.d("function_exit", "processDataToViews");
         }
 
         private void setupLineChart(LineChart lineChart, LineData chartData) {
@@ -275,36 +282,28 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<Entry> entries = new ArrayList<>();
 
             float currentDistance = 0;
-            double prevPosLatitude;
-            double prevPosLongitude;
-            long prevPosTime;
-            long timeDiffSeconds = 0;
-            long currentPassedSeconds = 0;
+            long startTime;
+            float timeDiffSeconds;
             float[] distanceResult = new float[1];
 
-            prevPosLatitude = data.get(0).getLatitude();
-            prevPosLongitude = data.get(0).getLongitude();
-            prevPosTime = data.get(0).getTime();
+            double prevPosLatitude= data.get(0).getLatitude();
+            double prevPosLongitude=  data.get(0).getLongitude();
+            long prevPosTime = startTime =  data.get(0).getTime();
 
             entries.add(new Entry(0, 0));
 
             for (TimePlace it : data) {
-                if (it.getTime() == prevPosTime) {
-                    continue;
-                }
-
-                Location.distanceBetween(prevPosLatitude, prevPosLongitude,
-                        it.getLatitude(), it.getLongitude(), distanceResult);
-
                 timeDiffSeconds = (it.getTime() - prevPosTime) / 1000;
                 if (timeDiffSeconds == 0)
                     continue;
 
-                currentDistance = currentDistance + distanceResult[0];
-                currentPassedSeconds = currentPassedSeconds + timeDiffSeconds;
+                Location.distanceBetween(prevPosLatitude, prevPosLongitude,
+                        it.getLatitude(), it.getLongitude(), distanceResult);
 
-                Log.d("generateTimePlaceData", "Add entry: " + currentDistance + ", " + currentPassedSeconds);
-                entries.add(new Entry(currentPassedSeconds, currentDistance));
+                currentDistance = currentDistance + distanceResult[0];
+
+                Log.d("generateTimePlaceData", "Add entry: " + currentDistance + ", " + (it.getTime() - startTime)/1000);
+                entries.add(new Entry((it.getTime() - startTime)/1000, currentDistance));
 
                 prevPosLatitude = it.getLatitude();
                 prevPosLongitude = it.getLongitude();
@@ -333,7 +332,8 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<Entry> entries = new ArrayList<>();
 
             entries.add(new Entry(0, 0));
-            for (Pair<Float,Long> it : data.getVelocityInfo()) {
+
+            for (Pair<Float, Long> it : data.getVelocityInfo()) {
                 Log.d("generateVelocityData", "Add entry: " + it.first + ", " + it.second);
                 entries.add(new Entry(it.second, it.first));
             }
@@ -381,44 +381,36 @@ public class MainActivity extends AppCompatActivity {
         private VelocityData analyzeTimePlaceDataForVelocity(ArrayList<TimePlace> timePlaces) {
             Log.d("function_entry", "analyzeTimePlaceDataForVelocity");
             ArrayList<Pair<Float, Long>> velocityInfo = new ArrayList<>();
-            float maxVelocity = 0, currentVelocity = 0;
-            double maxVelocityLatitude = 0, prevPosLatitude;
-            double maxVelocityLongitude = 0, prevPosLongitude;
+            float maxVelocity = 0, currentVelocity;
             long startTime;
-            long prevPosTime;
-            long timeDiffSeconds;
+            float timeDiffSeconds;
             float[] distanceResult = new float[1];
 
-            prevPosLatitude = timePlaces.get(0).getLatitude();
-            prevPosLongitude = timePlaces.get(0).getLongitude();
-            startTime = prevPosTime = timePlaces.get(0).getTime();
+            double prevPosLatitude = timePlaces.get(0).getLatitude();
+            double prevPosLongitude = timePlaces.get(0).getLongitude();
+            long prevPosTime = startTime = timePlaces.get(0).getTime();
 
             for (TimePlace it : timePlaces) {
-                if (it.getTime() == prevPosTime) {
-                    continue;
-                }
-
-                Location.distanceBetween(prevPosLatitude, prevPosLongitude,
-                        it.getLatitude(), it.getLongitude(), distanceResult);
-                timeDiffSeconds = (it.getTime() - prevPosTime) / 1000;
+               timeDiffSeconds = (it.getTime() - prevPosTime) / 1000;
                 if (timeDiffSeconds == 0)
                     continue;
 
-                currentVelocity = distanceResult[0] / timeDiffSeconds;
-                if (currentVelocity > maxVelocity) {
-                    maxVelocity = currentVelocity;
-                    maxVelocityLatitude = (prevPosLatitude + it.getLatitude()) / 2;
-                    maxVelocityLongitude = (prevPosLongitude + it.getLongitude()) / 2;
-                }
+                Location.distanceBetween(prevPosLatitude, prevPosLongitude,
+                        it.getLatitude(), it.getLongitude(), distanceResult);
 
+                currentVelocity = distanceResult[0] / timeDiffSeconds;
                 velocityInfo.add(new Pair<>(new Float(currentVelocity), new Long((it.getTime() - startTime) / 1000)));
 
                 prevPosLatitude = it.getLatitude();
                 prevPosLongitude = it.getLongitude();
                 prevPosTime = it.getTime();
+
+                if (currentVelocity > maxVelocity) {
+                    maxVelocity = currentVelocity;
+                }
             }
 
-            return new VelocityData(velocityInfo, maxVelocity, maxVelocityLatitude, maxVelocityLongitude);
+            return new VelocityData(velocityInfo, maxVelocity);
         }
     }
 
