@@ -33,7 +33,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE " + TABLE_NAME_ACTIVITIES + " (" +
                 ACTIVITY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 ACTIVITY_TYPE + " TEXT, " +
-                DATE_TIME + " INTEGER NOT NULL, " +
+                DATE_TIME + " LONG NOT NULL, " +
                 DURATION + " INTEGER NOT NULL, " +
                 DISTANCE + " INTEGER NOT NULL);");
 

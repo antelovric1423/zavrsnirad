@@ -61,9 +61,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // Check which request we're responding to
         if (requestCode == NEW_ACTIVITY_REQUEST) {
-            // Make sure the request was successful
             if (resultCode == RESULT_OK) {
                 ActivityData receivedData = (ActivityData) data.getSerializableExtra("time_place_list");
                 if (receivedData == null) {
@@ -77,20 +75,18 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                for (TimePlace it : positionData) {
-                    Log.d("OnActivityResult", "positionData - time:" + it.getTime());
-                }
-
-                /*
-                if (directionsContainer.getVisibility() == View.VISIBLE) {
-                    directionsContainer.setVisibility(View.GONE);
-                }*/
-
-
-                cardCreator.createActivityCardFromData(receivedData, this);
+                processActivityData(receivedData);
                 //databaseHelper.insertActivity(receivedData); TODO: ENABLE INSERTION OF ACTIVITIES AFTER DATA IS PROCESSED AND PRINTED OUT IN LAYOUT
             }
         }
+    }
+
+    private void processActivityData(ActivityData data) {
+        if (directionsContainer.getVisibility() == View.VISIBLE) {
+            directionsContainer.setVisibility(View.INVISIBLE);
+        }
+
+        cardCreator.createActivityCardFromData(data, this);
     }
 
     public void startTracking() {
@@ -187,33 +183,35 @@ public class MainActivity extends AppCompatActivity {
         private void setViewLayoutParams() {
             Log.d("function_entry", "setViewLayoutParams");
 
-            int dpValue = 8; // margin in dips
             float d = getResources().getDisplayMetrics().density;
-            int margin = (int)(dpValue * d); // margin in pixels
 
-            LinearLayout.LayoutParams basicLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            int dpValue = 8; // margin in dips
+            int margin = (int)(dpValue * d); // margin in pixels
             LinearLayout.LayoutParams cardLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT);
             cardLayoutParams.setMargins(margin, margin, margin, margin);
+            card.setLayoutParams(cardLayoutParams);
+            card.setRadius((int)(4*d));
+
             LinearLayout.LayoutParams chartLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT);
             chartLayoutParams.height = (int)(200*d);
-
-            card.setLayoutParams(cardLayoutParams);
-
             stChart.setLayoutParams(chartLayoutParams);
             vtChart.setLayoutParams(chartLayoutParams);
 
-            cardLayout.setLayoutParams(basicLayoutParams);
+            cardLayout.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
             cardLayout.setOrientation(LinearLayout.VERTICAL);
 
-            activityTypeTextView.setLayoutParams(basicLayoutParams);
-            activityStartTimeTextView.setLayoutParams(basicLayoutParams);
-            activityDurationTextView.setLayoutParams(basicLayoutParams);
-            activityDistanceTraveledTextView.setLayoutParams(basicLayoutParams);
-            averageVelocityTextView.setLayoutParams(basicLayoutParams);
-            maxVelocityTextView.setLayoutParams(basicLayoutParams);
+            LinearLayout.LayoutParams textLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            textLayoutParams.leftMargin = (int)(4*d);
+            activityTypeTextView.setLayoutParams(textLayoutParams);
+            activityStartTimeTextView.setLayoutParams(textLayoutParams);
+            activityDurationTextView.setLayoutParams(textLayoutParams);
+            activityDistanceTraveledTextView.setLayoutParams(textLayoutParams);
+            averageVelocityTextView.setLayoutParams(textLayoutParams);
+            maxVelocityTextView.setLayoutParams(textLayoutParams);
         }
 
         private void processDataToViews(ActivityData data) {
@@ -305,7 +303,7 @@ public class MainActivity extends AppCompatActivity {
                 currentDistance = currentDistance + distanceResult[0];
                 currentPassedSeconds = currentPassedSeconds + timeDiffSeconds;
 
-                Log.d("generateVelocityData", "Add entry: " + currentDistance + ", " + currentPassedSeconds);
+                Log.d("generateTimePlaceData", "Add entry: " + currentDistance + ", " + currentPassedSeconds);
                 entries.add(new Entry(currentPassedSeconds, currentDistance));
 
                 prevPosLatitude = it.getLatitude();
@@ -319,7 +317,6 @@ public class MainActivity extends AppCompatActivity {
             set.setCircleColor(Color.GREEN);
             set.setCircleRadius(5f);
             set.setFillColor(Color.GREEN);
-            set.setMode(LineDataSet.Mode.CUBIC_BEZIER);
             set.setDrawValues(true);
             set.setValueTextSize(10f);
             set.setValueTextColor(Color.GREEN);
@@ -347,7 +344,7 @@ public class MainActivity extends AppCompatActivity {
             set.setCircleColor(Color.MAGENTA);
             set.setCircleRadius(5f);
             set.setFillColor(Color.MAGENTA);
-            set.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+            set.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
             set.setDrawValues(true);
             set.setValueTextSize(10f);
             set.setValueTextColor(Color.MAGENTA);
@@ -361,6 +358,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d("function_entry", "insertActivityEntryToLayout");
 
             cardLayout.addView(activityTypeTextView);
+            cardLayout.addView(activityStartTimeTextView);
             cardLayout.addView(activityDurationTextView);
             cardLayout.addView(activityDistanceTraveledTextView);
             cardLayout.addView(averageVelocityTextView);
