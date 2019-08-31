@@ -66,7 +66,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 data.getDuration() + ", " +
                 data.getDistance() + ");");
 
-        Cursor cursor = db.rawQuery("SELECT " + ACTIVITY_ID + " FROM " + TABLE_NAME_ACTIVITIES +
+        Cursor cursor = db.rawQuery("SELECT " + ACTIVITY_ID +
+                " FROM " + TABLE_NAME_ACTIVITIES +
                 " WHERE " + TIMESTAMP + "=" + data.getStartTime(), null);
 
         if (cursor != null) {

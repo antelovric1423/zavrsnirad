@@ -10,7 +10,9 @@ public class ActivityData implements Serializable {
     private float distance;
     private ArrayList<TimePlace> timePlaces;
 
-    public ActivityData(String activityType, long startTime, int duration, float distance, ArrayList<TimePlace> timePlaces) {
+    public ActivityData(String activityType, long startTime,
+                        int duration, float distance,
+                        ArrayList<TimePlace> timePlaces) {
         this.activityType = activityType;
         this.startTime = startTime;
         this.duration = duration;
