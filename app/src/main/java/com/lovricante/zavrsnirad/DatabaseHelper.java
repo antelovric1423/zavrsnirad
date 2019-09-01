@@ -96,7 +96,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getReadableDatabase();
         ArrayList<ActivityData> storedData = new ArrayList<>();
 
-        Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_NAME_ACTIVITIES, null);
+        Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_NAME_ACTIVITIES,
+                null);
         if (cursor.moveToFirst()) {
             while (!cursor.isAfterLast()) {
                 int activityId = cursor.getInt(cursor.getColumnIndex(ACTIVITY_ID));
@@ -105,7 +106,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 int duration = cursor.getInt(cursor.getColumnIndex(DURATION));
                 int distance = cursor.getInt(cursor.getColumnIndex(DISTANCE));
 
-                storedData.add(new ActivityData(activityType, timestamp, duration, distance, getActivityPositions(activityId)));
+                storedData.add(new ActivityData(activityType, timestamp,
+                        duration, distance, getActivityPositions(activityId)));
                 cursor.moveToNext();
             }
         }
