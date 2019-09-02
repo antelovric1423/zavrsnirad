@@ -7,13 +7,11 @@
     android:layout_height="match_parent"
     xmlns:fab="http://schemas.android.com/apk/res-auto"
     tools:context=".LocationTracker">
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="bottom"
         android:orientation="vertical">
-
         <fragment
             xmlns:android="http://schemas.android.com/apk/res/android"
             xmlns:map="http://schemas.android.com/apk/res-auto"
@@ -25,7 +23,6 @@
             android:layout_height="match_parent"
             android:layout_weight="9"
             tools:context=".LocationTracker" />
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -67,7 +64,4 @@
         app:fab_colorNormal="@color/colorPrimary"
         fab:fab_label="Finish"
         fab:fab_size="mini" />
-
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
-
-

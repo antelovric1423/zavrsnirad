@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
 
         ArrayList<ActivityData> activityList = databaseHelper.getAllActivities();
         for (ActivityData it : activityList) {
-            if (it.getTimePlaces().size()!=0) {
+            if (it.getTimePlaces().size() != 0) {
                 processActivityData(it);
             }
         }
@@ -286,9 +286,9 @@ public class MainActivity extends AppCompatActivity {
             float timeDiffSeconds;
             float[] distanceResult = new float[1];
 
-            double prevPosLatitude= data.get(0).getLatitude();
-            double prevPosLongitude=  data.get(0).getLongitude();
-            long prevPosTime = startTime =  data.get(0).getTime();
+            double prevPosLatitude = data.get(0).getLatitude();
+            double prevPosLongitude = data.get(0).getLongitude();
+            long prevPosTime = startTime = data.get(0).getTime();
 
             entries.add(new Entry(0, 0));
 
@@ -302,8 +302,8 @@ public class MainActivity extends AppCompatActivity {
 
                 currentDistance = currentDistance + distanceResult[0];
 
-                Log.d("generateTimePlaceData", "Add entry: " + currentDistance + ", " + (it.getTime() - startTime)/1000);
-                entries.add(new Entry((it.getTime() - startTime)/1000, currentDistance));
+                Log.d("generateTimePlaceData", "Add entry: " + currentDistance + ", " + (it.getTime() - startTime) / 1000);
+                entries.add(new Entry((it.getTime() - startTime) / 1000, currentDistance));
 
                 prevPosLatitude = it.getLatitude();
                 prevPosLongitude = it.getLongitude();
@@ -391,7 +391,7 @@ public class MainActivity extends AppCompatActivity {
             long prevPosTime = startTime = timePlaces.get(0).getTime();
 
             for (TimePlace it : timePlaces) {
-               timeDiffSeconds = (it.getTime() - prevPosTime) / 1000;
+                timeDiffSeconds = (it.getTime() - prevPosTime) / 1000;
                 if (timeDiffSeconds == 0)
                     continue;
 
