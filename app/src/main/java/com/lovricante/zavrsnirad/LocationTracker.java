@@ -177,13 +177,18 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                 mMap.getUiSettings().setMapToolbarEnabled(false);
                 mMap.getUiSettings().setZoomControlsEnabled(false);
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16f));
-                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+                if (ActivityCompat.checkSelfPermission(this,
+                        android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+                        PackageManager.PERMISSION_GRANTED) {
                     mMap.setMyLocationEnabled(true);
                 }
+
                 isFirstRun = false;
                 finishButton.setVisibility(View.VISIBLE);
             } else if (startPressed) {
-                Location.distanceBetween(prevLocation.latitude, prevLocation.longitude, latLng.latitude, latLng.longitude, distanceResult);
+                Location.distanceBetween(prevLocation.latitude, prevLocation.longitude,
+                        latLng.latitude, latLng.longitude, distanceResult);
 
                 if (distanceResult[0] > 1.0) {
                     mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
@@ -197,7 +202,8 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                     positionHistory.add(new TimePlace(latLng, currentTime));
 
                     totalDistance = totalDistance + distanceResult[0];
-                    distanceTrackerTextView.setText(String.format(Locale.getDefault(), "Distance: %.2fm", totalDistance));
+                    distanceTrackerTextView.setText(String
+                            .format(Locale.getDefault(), "Distance: %.2fm", totalDistance));
                 }
             }
         }
@@ -230,7 +236,9 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED) {
             return;
         }
         startLocationUpdates();
@@ -239,8 +247,7 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
         if (mLocation == null) {
             startLocationUpdates();
         }
-        if (mLocation != null) {
-        } else {
+        if (mLocation == null) {
             Toast.makeText(this, "Location not Detected", Toast.LENGTH_SHORT).show();
         }
     }
@@ -251,17 +258,21 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                 .setInterval(UPDATE_INTERVAL)
                 .setFastestInterval(FASTEST_INTERVAL);
 
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED) {
             return;
         }
-        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        LocationServices.FusedLocationApi
+                .requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
     }
 
     @Override
     public void onLocationChanged(Location location) {
         latLng = new LatLng(location.getLatitude(), location.getLongitude());
 
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        SupportMapFragment mapFragment =
+                (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
     }
 
