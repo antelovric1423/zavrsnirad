@@ -1,5 +1,6 @@
 package com.lovricante.zavrsnirad;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -33,12 +34,10 @@ import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
     static final int NEW_ACTIVITY_REQUEST = 1;
-    private String newActivityType;
 
     private DatabaseHelper databaseHelper;
     private ActivityCardCreator cardCreator;
 
-    private FloatingActionMenu FABMenu;
     private FloatingActionButton FABRun, FABWalk, FABDrive;
 
     private CardView directionsContainer;
@@ -48,15 +47,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-
-        setButtonListeners();
+        setViewReferences();
 
         databaseHelper = new DatabaseHelper(this.getApplicationContext());
         cardCreator = new ActivityCardCreator();
-
-        directionsContainer = findViewById(R.id.directionsContainer);
 
         ArrayList<ActivityData> activityList = databaseHelper.getAllActivities();
         for (ActivityData it : activityList) {
@@ -66,11 +60,46 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void setViewReferences() {
+        FABWalk = (FloatingActionButton) findViewById(R.id.fab_walk);
+        FABRun = (FloatingActionButton) findViewById(R.id.fab_run);
+        FABDrive = (FloatingActionButton) findViewById(R.id.fab_drive);
+
+        directionsContainer = findViewById(R.id.directionsContainer);
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        FABWalk.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                startTracking("Walk");
+            }
+        });
+        FABRun.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                startTracking("Run");
+            }
+        });
+        FABDrive.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                startTracking("Drive");
+            }
+        });
+    }
+
+    public void startTracking(String activityType) {
+        Intent intent = new Intent(this, LocationTracker.class);
+        intent.putExtra("activityType", activityType);
+
+        startActivityForResult(intent, NEW_ACTIVITY_REQUEST);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == NEW_ACTIVITY_REQUEST) {
             if (resultCode == RESULT_OK) {
-                ActivityData receivedData = (ActivityData) data.getSerializableExtra("time_place_list");
+                ActivityData receivedData =
+                        (ActivityData) data.getSerializableExtra("time_place_list");
                 if (receivedData == null) {
                     Log.d("OnActivityResult", "Received Data is NULL");
                     return;
@@ -78,7 +107,8 @@ public class MainActivity extends AppCompatActivity {
 
                 ArrayList<TimePlace> positionData = receivedData.getTimePlaces();
                 if (positionData.size() < 2) {
-                    Log.d("OnActivityResult", "Not enough entries in positionData to acknowledge activity");
+                    Log.d("OnActivityResult",
+                            "Not enough entries in positionData to acknowledge activity");
                     return;
                 }
 
@@ -94,39 +124,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         cardCreator.createActivityCardFromData(data, this);
-    }
-
-    public void startTracking() {
-        Intent intent = new Intent(this, LocationTracker.class);
-        intent.putExtra("activityType", newActivityType);
-
-        startActivityForResult(intent, NEW_ACTIVITY_REQUEST);
-    }
-
-    private void setButtonListeners() {
-        FABMenu = (FloatingActionMenu) findViewById(R.id.fab_menu);
-        FABWalk = (FloatingActionButton) findViewById(R.id.fab_walk);
-        FABRun = (FloatingActionButton) findViewById(R.id.fab_run);
-        FABDrive = (FloatingActionButton) findViewById(R.id.fab_drive);
-
-        FABWalk.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                newActivityType = "Walk";
-                startTracking();
-            }
-        });
-        FABRun.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                newActivityType = "Run";
-                startTracking();
-            }
-        });
-        FABDrive.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                newActivityType = "Drive";
-                startTracking();
-            }
-        });
     }
 
     @Override
@@ -210,7 +207,8 @@ public class MainActivity extends AppCompatActivity {
                     LinearLayout.LayoutParams.WRAP_CONTENT));
             cardLayout.setOrientation(LinearLayout.VERTICAL);
 
-            LinearLayout.LayoutParams textLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams textLayoutParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT);
             textLayoutParams.leftMargin = (int) (4 * d);
             activityTypeTextView.setLayoutParams(textLayoutParams);
@@ -221,29 +219,34 @@ public class MainActivity extends AppCompatActivity {
             maxVelocityTextView.setLayoutParams(textLayoutParams);
         }
 
+        @SuppressLint({"SetTextI18n", "DefaultLocale"})
         private void processDataToViews(ActivityData data) {
             Log.d("function_entry", "processDataToViews " + data.getActivityType());
 
-            activityTypeTextView.setText("Activity: " + data.getActivityType());
-            Log.d("text", "" + activityTypeTextView.getText());
-            activityStartTimeTextView.setText("Date and time: " + getDateTimeStr(data.getStartTime()));
-            Log.d("text", "" + activityStartTimeTextView.getText());
+            activityTypeTextView.setText("Activity: " +
+                    data.getActivityType());
+
+            activityStartTimeTextView.setText("Date and time: " +
+                    getDateTimeStr(data.getStartTime()));
+
             activityDurationTextView.setText("Duration: " +
-                    String.format("%02d:%02d", (int) (data.getDuration() / 60), (int) (data.getDuration() % 60)));
-            Log.d("text", "" + activityDurationTextView.getText());
-            activityDistanceTraveledTextView.setText("Distance traveled: " + String.format("%.2f", data.getDistance()) + "m");
-            Log.d("text", "" + activityDistanceTraveledTextView.getText());
-            averageVelocityTextView.setText("Avg velocity: " + String.format("%.2f", data.getDistance() / data.getDuration()) + "m/s");
-            Log.d("text", "" + averageVelocityTextView.getText());
+                    String.format("%02d:%02d",
+                            (int) (data.getDuration() / 60),
+                            (int) (data.getDuration() % 60)));
+
+            activityDistanceTraveledTextView.setText("Distance traveled: " +
+                    String.format("%.2f", data.getDistance()) + "m");
+
+            averageVelocityTextView.setText("Avg velocity: " +
+                    String.format("%.2f", data.getDistance() / data.getDuration()) + "m/s");
 
             VelocityData velocityData = analyzeTimePlaceDataForVelocity(data.getTimePlaces());
 
-            maxVelocityTextView.setText("Max velocity: " + String.format("%.2f", velocityData.getMaxVelocity()) + "m/s");
-            Log.d("text", "" + maxVelocityTextView.getText());
+            maxVelocityTextView.setText("Max velocity: " +
+                    String.format("%.2f", velocityData.getMaxVelocity()) + "m/s");
 
             setupLineChart(stChart, generateTimePlaceData(data.getTimePlaces()));
             setupLineChart(vtChart, generateVelocityData(velocityData));
-            Log.d("function_exit", "processDataToViews");
         }
 
         private void setupLineChart(LineChart lineChart, LineData chartData) {
@@ -280,12 +283,10 @@ public class MainActivity extends AppCompatActivity {
 
             LineData d = new LineData();
             ArrayList<Entry> entries = new ArrayList<>();
-
             float currentDistance = 0;
             long startTime;
             float timeDiffSeconds;
             float[] distanceResult = new float[1];
-
             double prevPosLatitude = data.get(0).getLatitude();
             double prevPosLongitude = data.get(0).getLongitude();
             long prevPosTime = startTime = data.get(0).getTime();
@@ -314,7 +315,7 @@ public class MainActivity extends AppCompatActivity {
             set.setColor(Color.GREEN);
             set.setLineWidth(2.5f);
             set.setCircleColor(Color.GREEN);
-            set.setCircleRadius(5f);
+            set.setCircleRadius(2.5f);
             set.setFillColor(Color.GREEN);
             set.setDrawValues(true);
             set.setValueTextSize(10f);
@@ -342,7 +343,7 @@ public class MainActivity extends AppCompatActivity {
             set.setColor(Color.MAGENTA);
             set.setLineWidth(2.5f);
             set.setCircleColor(Color.MAGENTA);
-            set.setCircleRadius(5f);
+            set.setCircleRadius(2.5f);
             set.setFillColor(Color.MAGENTA);
             set.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
             set.setDrawValues(true);
@@ -391,7 +392,7 @@ public class MainActivity extends AppCompatActivity {
             long prevPosTime = startTime = timePlaces.get(0).getTime();
 
             for (TimePlace it : timePlaces) {
-                timeDiffSeconds = (it.getTime() - prevPosTime) / 1000;
+                timeDiffSeconds = (float)(it.getTime() - prevPosTime) / 1000;
                 if (timeDiffSeconds == 0)
                     continue;
 
@@ -399,7 +400,7 @@ public class MainActivity extends AppCompatActivity {
                         it.getLatitude(), it.getLongitude(), distanceResult);
 
                 currentVelocity = distanceResult[0] / timeDiffSeconds;
-                velocityInfo.add(new Pair<>(new Float(currentVelocity), new Long((it.getTime() - startTime) / 1000)));
+                velocityInfo.add(new Pair<>(currentVelocity, (it.getTime() - startTime) / 1000));
 
                 prevPosLatitude = it.getLatitude();
                 prevPosLongitude = it.getLongitude();
