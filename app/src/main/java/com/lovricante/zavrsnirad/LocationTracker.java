@@ -41,7 +41,6 @@ import com.karumi.dexter.listener.PermissionGrantedResponse;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.single.PermissionListener;
 
-import java.util.ArrayList;
 import java.util.Locale;
 
 public class LocationTracker extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
@@ -54,23 +53,16 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
     private Location mLocation;
     private LocationManager mLocationManager;
     private LocationRequest mLocationRequest;
-    private ArrayList<TimePlace> positionHistory;
-    private LatLng prevLocation;
-    private LatLng latLng;
-    private long startTime;
-    private long currentTime;
-    private float totalDistance = 0;
-    private boolean isPermission;
-    private boolean isFirstRun = true;
-    private boolean startPressed = false;
-    private FloatingActionButton finishButton;
-    private TextView distanceTrackerTextView;
-    private TextView timeTrackerTextView;
+    private TimePlace mPrevTimePlace;
+    private LatLng mCurrentLocation;
+    private DatabaseHelper mDatabaseHelper;
+    private String mActivityType;
+    private long mStartTime, mCurrentTime;
     Runnable timerRunnable = new Runnable() {
 
         @Override
         public void run() {
-            long timeDiff = System.currentTimeMillis() - startTime;
+            long timeDiff = System.currentTimeMillis() - mStartTime;
             int seconds = (int) (timeDiff / 1000);
             int minutes = seconds / 60;
             seconds = seconds % 60;
@@ -80,14 +72,33 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
             timerHandler.postDelayed(this, 500);
         }
     };
+    private float mTotalDistance = 0, mMinimalDistanceToTrack;
+    private boolean mLocationAccessPermitted, isFirstRun = true, startPressed = false;
+    private int mEntryId = -1;
+    private FloatingActionButton finishButton;
+    private TextView distanceTrackerTextView, timeTrackerTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_location_tracker);
 
+        mActivityType = getIntent().getStringExtra("activityType");
+        switch (mActivityType) {
+            case "Walk":
+                mMinimalDistanceToTrack = 2;
+                break;
+            case "Run":
+                mMinimalDistanceToTrack = 1;
+                break;
+            case "Drive":
+                mMinimalDistanceToTrack = 5;
+                break;
+            default:
+                mMinimalDistanceToTrack = 1;
+        }
+
         if (requestLocationPermission()) {
-            // Obtain the SupportMapFragment and get notified when the map is ready to be used.
             SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                     .findFragmentById(R.id.map);
             mapFragment.getMapAsync(this);
@@ -103,14 +114,15 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
             if (!checkIsLocationEnabled()) {
                 returnToMainActivity();
             }
-        }
-        else {
+        } else {
             returnToMainActivity();
         }
 
+        mDatabaseHelper = new DatabaseHelper(this.getApplicationContext());
+
         timeTrackerTextView = findViewById(R.id.timePassedTextView);
         distanceTrackerTextView = findViewById(R.id.distancePassedTextView);
-        finishButton = (FloatingActionButton) findViewById(R.id.fab_finish);
+        finishButton = findViewById(R.id.fab_finish);
         finishButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (startPressed) {
@@ -120,17 +132,15 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                     finishButton.setImageDrawable(getResources()
                             .getDrawable(android.R.drawable.checkbox_on_background));
 
-                    startTime = System.currentTimeMillis();
+                    mStartTime = System.currentTimeMillis();
                     timerHandler = new Handler();
                     timerHandler.postDelayed(timerRunnable, 0);
 
                     if (mMap != null) {
                         mMap.addMarker(new MarkerOptions()
-                                .position(latLng).title("Starting position"));
+                                .position(mCurrentLocation).title("Starting position"));
                     }
-                    prevLocation = latLng;
-                    positionHistory = new ArrayList<>();
-                    positionHistory.add(new TimePlace(latLng, currentTime));
+                    mPrevTimePlace = new TimePlace(mCurrentLocation, mCurrentTime);
                 }
             }
         });
@@ -141,19 +151,13 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
 
         timerHandler.removeCallbacks(timerRunnable);
 
-        if (!startPressed || positionHistory.size() < 2) {
+        if (!startPressed || mEntryId < 0) {
             setResult(RESULT_CANCELED);
             finish();
         }
 
-        Intent startIntent = getIntent();
         Intent data = new Intent(this, MainActivity.class);
-        data.putExtra("time_place_list",
-                new ActivityData(startIntent.getStringExtra("activityType"),
-                        startTime,
-                        (int) (currentTime - startTime) / 1000,
-                        totalDistance,
-                        positionHistory));
+        data.putExtra("ActivityId", mEntryId);
 
         setResult(RESULT_OK, data);
         finish();
@@ -169,41 +173,46 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
     @Override
     public void onMapReady(GoogleMap googleMap) {
         float[] distanceResult = new float[1];
-        currentTime = System.currentTimeMillis();
+        mCurrentTime = System.currentTimeMillis();
         mMap = googleMap;
 
-        if (latLng != null) {
+        if (mCurrentLocation != null) {
             if (isFirstRun) {
                 mMap.getUiSettings().setMapToolbarEnabled(false);
                 mMap.getUiSettings().setZoomControlsEnabled(false);
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16f));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mCurrentLocation, 16f));
 
                 if (ActivityCompat.checkSelfPermission(this,
-                        android.Manifest.permission.ACCESS_FINE_LOCATION) ==
-                        PackageManager.PERMISSION_GRANTED) {
+                        android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     mMap.setMyLocationEnabled(true);
                 }
 
                 isFirstRun = false;
                 finishButton.setVisibility(View.VISIBLE);
             } else if (startPressed) {
-                Location.distanceBetween(prevLocation.latitude, prevLocation.longitude,
-                        latLng.latitude, latLng.longitude, distanceResult);
+                Location.distanceBetween(mPrevTimePlace.getLatitude(), mPrevTimePlace.getLongitude(),
+                        mCurrentLocation.latitude, mCurrentLocation.longitude, distanceResult);
 
-                if (distanceResult[0] > 1.0) {
-                    mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+                if (distanceResult[0] > mMinimalDistanceToTrack) {
+                    if (mEntryId == -1) {
+                        mEntryId = mDatabaseHelper.insertActivity(mActivityType);
+
+                        mDatabaseHelper.insertPositionData(mEntryId, mPrevTimePlace);
+                    }
+
+                    mMap.animateCamera(CameraUpdateFactory.newLatLng(mCurrentLocation));
                     mMap.addPolyline(new PolylineOptions()
-                            .add(prevLocation, latLng)
+                            .add(mPrevTimePlace.getPlace(), mCurrentLocation)
                             .width(20)
                             .color(Color.CYAN)
                             .jointType(JointType.ROUND));
 
-                    prevLocation = latLng;
-                    positionHistory.add(new TimePlace(latLng, currentTime));
+                    mPrevTimePlace = new TimePlace(mCurrentLocation, mCurrentTime);
+                    mDatabaseHelper.insertPositionData(mEntryId, mPrevTimePlace);
 
-                    totalDistance = totalDistance + distanceResult[0];
+                    mTotalDistance = mTotalDistance + distanceResult[0];
                     distanceTrackerTextView.setText(String
-                            .format(Locale.getDefault(), "Distance: %.2fm", totalDistance));
+                            .format(Locale.getDefault(), "Distance: %.2fm", mTotalDistance));
                 }
             }
         }
@@ -269,7 +278,7 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
 
     @Override
     public void onLocationChanged(Location location) {
-        latLng = new LatLng(location.getLatitude(), location.getLongitude());
+        mCurrentLocation = new LatLng(location.getLatitude(), location.getLongitude());
 
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
@@ -327,13 +336,13 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                     @Override
                     public void onPermissionGranted(PermissionGrantedResponse response) {
                         Toast.makeText(LocationTracker.this, "Single permission is granted!", Toast.LENGTH_SHORT).show();
-                        isPermission = true;
+                        mLocationAccessPermitted = true;
                     }
 
                     @Override
                     public void onPermissionDenied(PermissionDeniedResponse response) {
                         if (response.isPermanentlyDenied()) {
-                            isPermission = false;
+                            mLocationAccessPermitted = false;
                         }
                     }
 
@@ -342,7 +351,7 @@ public class LocationTracker extends FragmentActivity implements OnMapReadyCallb
                         token.continuePermissionRequest();
                     }
                 }).check();
-        return isPermission;
+        return mLocationAccessPermitted;
     }
 
 }

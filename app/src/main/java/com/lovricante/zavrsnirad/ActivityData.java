@@ -4,36 +4,24 @@ import java.io.Serializable;
 import java.util.ArrayList;
 
 public class ActivityData implements Serializable {
+    private int activityId;
     private String activityType;
-    private long startTime;
-    private int duration;
-    private float distance;
     private ArrayList<TimePlace> timePlaces;
 
-    public ActivityData(String activityType, long startTime,
-                        int duration, float distance,
+    public ActivityData(int id,
+                        String activityType,
                         ArrayList<TimePlace> timePlaces) {
+        this.activityId = id;
         this.activityType = activityType;
-        this.startTime = startTime;
-        this.duration = duration;
-        this.distance = distance;
         this.timePlaces = timePlaces;
+    }
+
+    public int getActivityId() {
+        return activityId;
     }
 
     public String getActivityType() {
         return activityType;
-    }
-
-    public long getStartTime() {
-        return startTime;
-    }
-
-    public long getDuration() {
-        return duration;
-    }
-
-    public float getDistance() {
-        return distance;
     }
 
     public ArrayList<TimePlace> getTimePlaces() {

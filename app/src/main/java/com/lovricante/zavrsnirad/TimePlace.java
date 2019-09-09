@@ -5,22 +5,24 @@ import com.google.android.gms.maps.model.LatLng;
 import java.io.Serializable;
 
 public class TimePlace implements Serializable {
-    private double latitude;
-    private double longitude;
+    private LatLng place;
     private long time;
 
     public TimePlace(LatLng place, long time) {
-        this.latitude = place.latitude;
-        this.longitude = place.longitude;
+        this.place = place;
         this.time = time;
     }
 
+    public LatLng getPlace() {
+        return place;
+    }
+
     public double getLatitude() {
-        return latitude;
+        return place.latitude;
     }
 
     public double getLongitude() {
-        return longitude;
+        return place.longitude;
     }
 
     public long getTime() {

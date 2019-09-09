@@ -16,8 +16,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TABLE_NAME_ACTIVITIES = "Activities";
     private static final String ACTIVITY_ID = "ActivityID";
     private static final String ACTIVITY_TYPE = "Type";
-    private static final String DURATION = "Duration";
-    private static final String DISTANCE = "Distance";
 
     private static final String TABLE_NAME_POSITION_DATA = "PositionData";
     private static final String POSITION_DATA_ID = "PositionDataID";
@@ -26,7 +24,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TIMESTAMP = "Timestamp";
 
     DatabaseHelper(@Nullable Context context) {
-        super(context, DATABASE_NAME, null, 2);
+        super(context, DATABASE_NAME, null, 3);
     }
 
     @Override
@@ -41,10 +39,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_NAME_ACTIVITIES + " (" +
                 ACTIVITY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                ACTIVITY_TYPE + " TEXT, " +
-                TIMESTAMP + " LONG NOT NULL, " +
-                DURATION + " INTEGER NOT NULL, " +
-                DISTANCE + " INTEGER NOT NULL);");
+                ACTIVITY_TYPE + " TEXT);");
 
         db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_NAME_POSITION_DATA + " (" +
                 POSITION_DATA_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -56,40 +51,41 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 TABLE_NAME_ACTIVITIES + "(" + ACTIVITY_ID + "));");
     }
 
-    public void insertActivity(ActivityData data) {
+    public int insertActivity(String activityType) {
         SQLiteDatabase db = this.getWritableDatabase();
         db.execSQL("INSERT INTO " + TABLE_NAME_ACTIVITIES + " (" +
-                ACTIVITY_TYPE + ", " + TIMESTAMP + ", " + DURATION + ", " +
-                DISTANCE + ") VALUES (" +
-                "'" + data.getActivityType() + "', " +
-                data.getStartTime() + ", " +
-                data.getDuration() + ", " +
-                data.getDistance() + ");");
+                ACTIVITY_TYPE + ") VALUES (" +
+                "'" + activityType + "');");
 
-        Cursor cursor = db.rawQuery("SELECT " + ACTIVITY_ID +
-                " FROM " + TABLE_NAME_ACTIVITIES +
-                " WHERE " + TIMESTAMP + "=" + data.getStartTime(), null);
-
-        if (cursor != null) {
-            cursor.moveToFirst();
-            int activityId = cursor.getInt(0);
-
-            insertPositionData(activityId, data.getTimePlaces());
-        }
+        Cursor cursor = db.rawQuery("SELECT last_insert_rowid()", null);
+        cursor.moveToFirst();
+        return cursor.getInt(0);
     }
 
-    private void insertPositionData(int activityId, ArrayList<TimePlace> data) {
+    void insertPositionData(int activityId, TimePlace data) {
         SQLiteDatabase db = this.getWritableDatabase();
 
-        for (TimePlace it : data) {
-            db.execSQL("INSERT INTO " + TABLE_NAME_POSITION_DATA + " (" +
-                    ACTIVITY_ID + ", " + LATITUDE + ", " + LONGITUDE + ", " +
-                    TIMESTAMP + ") VALUES (" +
-                    activityId + ", " +
-                    it.getLatitude() + ", " +
-                    it.getLongitude() + ", " +
-                    it.getTime() + ");");
+        db.execSQL("INSERT INTO " + TABLE_NAME_POSITION_DATA + " (" +
+                ACTIVITY_ID + ", " + LATITUDE + ", " + LONGITUDE + ", " +
+                TIMESTAMP + ") VALUES (" +
+                activityId + ", " +
+                data.getLatitude() + ", " +
+                data.getLongitude() + ", " +
+                data.getTime() + ");");
+    }
+
+    public ActivityData getActivityById(int id) {
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_NAME_ACTIVITIES +
+                        " WHERE " + ACTIVITY_ID + "=" + id,
+                null);
+        if (cursor.moveToFirst()) {
+            String activityType = cursor.getString(cursor.getColumnIndex(ACTIVITY_TYPE));
+            return new ActivityData(id, activityType, getActivityPositions(id));
         }
+
+        return null;
     }
 
     public ArrayList<ActivityData> getAllActivities() {
@@ -100,14 +96,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 null);
         if (cursor.moveToFirst()) {
             while (!cursor.isAfterLast()) {
-                int activityId = cursor.getInt(cursor.getColumnIndex(ACTIVITY_ID));
+                int id = cursor.getInt(cursor.getColumnIndex(ACTIVITY_ID));
                 String activityType = cursor.getString(cursor.getColumnIndex(ACTIVITY_TYPE));
-                long timestamp = cursor.getLong(cursor.getColumnIndex(TIMESTAMP));
-                int duration = cursor.getInt(cursor.getColumnIndex(DURATION));
-                int distance = cursor.getInt(cursor.getColumnIndex(DISTANCE));
 
-                storedData.add(new ActivityData(activityType, timestamp,
-                        duration, distance, getActivityPositions(activityId)));
+                storedData.add(new ActivityData(id, activityType, getActivityPositions(id)));
                 cursor.moveToNext();
             }
         }

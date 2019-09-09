@@ -10,16 +10,15 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
-import androidx.core.util.Pair;
 
 import com.github.clans.fab.FloatingActionButton;
-import com.github.clans.fab.FloatingActionMenu;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
@@ -27,19 +26,21 @@ import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     static final int NEW_ACTIVITY_REQUEST = 1;
+    static final int SHOW_ROUTE_REQUEST = 2;
 
-    private DatabaseHelper databaseHelper;
-    private ActivityCardCreator cardCreator;
+    private DatabaseHelper mDatabaseHelper;
+    private ActivityCardCreator mCardCreator;
 
     private FloatingActionButton FABRun, FABWalk, FABDrive;
-
     private CardView directionsContainer;
 
     @Override
@@ -49,10 +50,10 @@ public class MainActivity extends AppCompatActivity {
 
         setViewReferences();
 
-        databaseHelper = new DatabaseHelper(this.getApplicationContext());
-        cardCreator = new ActivityCardCreator();
+        mDatabaseHelper = new DatabaseHelper(this.getApplicationContext());
+        mCardCreator = new ActivityCardCreator();
 
-        ArrayList<ActivityData> activityList = databaseHelper.getAllActivities();
+        ArrayList<ActivityData> activityList = mDatabaseHelper.getAllActivities();
         for (ActivityData it : activityList) {
             if (it.getTimePlaces().size() != 0) {
                 processActivityData(it);
@@ -94,26 +95,26 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(intent, NEW_ACTIVITY_REQUEST);
     }
 
+    public void showRoute(View button) {
+        int activityId = ((View) button.getParent()).getId();
+
+        Intent intent = new Intent(this, RouteDisplay.class);
+        intent.putExtra("activityId", activityId);
+        startActivityForResult(intent, SHOW_ROUTE_REQUEST);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == NEW_ACTIVITY_REQUEST) {
             if (resultCode == RESULT_OK) {
-                ActivityData receivedData =
-                        (ActivityData) data.getSerializableExtra("time_place_list");
-                if (receivedData == null) {
-                    Log.d("OnActivityResult", "Received Data is NULL");
+                int receivedData =
+                        (int) data.getSerializableExtra("ActivityId");
+                if (receivedData < 0) {
+                    Log.e("OnActivityResult", "Bad Activity Data!");
                     return;
                 }
 
-                ArrayList<TimePlace> positionData = receivedData.getTimePlaces();
-                if (positionData.size() < 2) {
-                    Log.d("OnActivityResult",
-                            "Not enough entries in positionData to acknowledge activity");
-                    return;
-                }
-
-                processActivityData(receivedData);
-                databaseHelper.insertActivity(receivedData);
+                processActivityData(mDatabaseHelper.getActivityById(receivedData));
             }
         }
     }
@@ -123,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
             directionsContainer.setVisibility(View.INVISIBLE);
         }
 
-        cardCreator.createActivityCardFromData(data, this);
+        mCardCreator.createActivityCardFromData(data, this);
     }
 
     @Override
@@ -149,17 +150,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public class ActivityCardCreator {
+        ArrayList<Entry> mPaceEntries, mDistanceEntries;
         private LinearLayout cardContainer;
         private CardView card;
         private LinearLayout cardLayout;
-        private LineChart stChart;
-        private LineChart vtChart;
+        private LineChart distanceTravelledChart;
+        private LineChart paceChart;
         private TextView activityTypeTextView;
         private TextView activityStartTimeTextView;
         private TextView activityDurationTextView;
         private TextView activityDistanceTraveledTextView;
+        private TextView averagePaceTextView;
         private TextView averageVelocityTextView;
-        private TextView maxVelocityTextView;
+        private Button showRouteButton;
+        private int mActivityId;
+        private String mActivityType = "";
+        private long mStartTime = 0;
+        private float mDuration = 0, mDistance = 0;
 
         public ActivityCardCreator() {
             cardContainer = findViewById(R.id.cardContainer);
@@ -170,25 +177,82 @@ public class MainActivity extends AppCompatActivity {
 
             card = new CardView(context);
             cardLayout = new LinearLayout(context);
-            stChart = new LineChart(context);
-            vtChart = new LineChart(context);
+            distanceTravelledChart = new LineChart(context);
+            paceChart = new LineChart(context);
             activityTypeTextView = new TextView(context);
             activityStartTimeTextView = new TextView(context);
             activityDurationTextView = new TextView(context);
             activityDistanceTraveledTextView = new TextView(context);
+            averagePaceTextView = new TextView(context);
             averageVelocityTextView = new TextView(context);
-            maxVelocityTextView = new TextView(context);
+            showRouteButton = new Button(context);
 
+            processActivityData(data);
+            setupViews();
             setViewLayoutParams();
-            processDataToViews(data);
             insertActivityEntryToLayout();
+        }
+
+        private void processActivityData(ActivityData activity) {
+            mActivityId = activity.getActivityId();
+            mActivityType = activity.getActivityType();
+            mDistanceEntries = new ArrayList<>();
+            mPaceEntries = new ArrayList<>();
+            mDistance = 0;
+
+            ArrayList<TimePlace> data = activity.getTimePlaces();
+
+            float timeDiffSeconds, timePassed = 0;
+            float[] distanceResult = new float[1];
+            double prevPosLatitude = data.get(0).getLatitude();
+            double prevPosLongitude = data.get(0).getLongitude();
+            long prevPosTime = mStartTime = data.get(0).getTime();
+            mDuration = (float) (data.get(data.size() - 1).getTime() - mStartTime) / 1000;
+
+            mDistanceEntries.add(new Entry(0, 0));
+            mPaceEntries.add(new Entry(0, 0));
+
+            for (TimePlace it : data) {
+                timeDiffSeconds = (float) (it.getTime() - prevPosTime) / 1000;
+                if (timeDiffSeconds == 0)
+                    continue;
+
+                Location.distanceBetween(prevPosLatitude, prevPosLongitude, it.getLatitude(),
+                        it.getLongitude(), distanceResult);
+                mDistance = mDistance + distanceResult[0];
+                timePassed = timePassed + timeDiffSeconds;
+
+                mDistanceEntries.add(new Entry(timePassed, mDistance));
+                mDistanceEntries.add(new Entry(timePassed, mDistance));
+
+                prevPosLatitude = it.getLatitude();
+                prevPosLongitude = it.getLongitude();
+                prevPosTime = it.getTime();
+            }
+        }
+
+        @SuppressLint({"SetTextI18n", "DefaultLocale"})
+        private void setupViews() {
+            activityTypeTextView.setText("Activity: " + mActivityType);
+            activityStartTimeTextView.setText("Date and time: " + getDateTimeStr(mStartTime));
+            activityDurationTextView.setText("Duration: " +
+                    String.format("%02d:%02d", (int) (mDuration / 60), (int) (mDuration % 60)));
+            activityDistanceTraveledTextView.setText("Distance traveled: " +
+                    String.format("%.2f", mDistance) + "m");
+            averagePaceTextView.setText("Average pace: " +
+                    String.format("%.2f", (mDuration / 60) / (mDistance / 1000)) + "min/km");
+            averageVelocityTextView.setText("Average velocity: " +
+                    String.format("%.2f", (mDistance / 1000) / (mDuration / 3600)) + "km/h");
+            showRouteButton.setText("Show route");
+
+            setupLineChart(distanceTravelledChart, generateDistanceTravelledData());
+            setupLineChart(paceChart, generatePaceData());
         }
 
         private void setViewLayoutParams() {
             Log.d("function_entry", "setViewLayoutParams");
 
             float d = getResources().getDisplayMetrics().density;
-
             int dpValue = 8; // margin in dips
             int margin = (int) (dpValue * d); // margin in pixels
             LinearLayout.LayoutParams cardLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
@@ -200,8 +264,8 @@ public class MainActivity extends AppCompatActivity {
             LinearLayout.LayoutParams chartLayoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT);
             chartLayoutParams.height = (int) (200 * d);
-            stChart.setLayoutParams(chartLayoutParams);
-            vtChart.setLayoutParams(chartLayoutParams);
+            distanceTravelledChart.setLayoutParams(chartLayoutParams);
+            paceChart.setLayoutParams(chartLayoutParams);
 
             cardLayout.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -215,38 +279,42 @@ public class MainActivity extends AppCompatActivity {
             activityStartTimeTextView.setLayoutParams(textLayoutParams);
             activityDurationTextView.setLayoutParams(textLayoutParams);
             activityDistanceTraveledTextView.setLayoutParams(textLayoutParams);
+            averagePaceTextView.setLayoutParams(textLayoutParams);
             averageVelocityTextView.setLayoutParams(textLayoutParams);
-            maxVelocityTextView.setLayoutParams(textLayoutParams);
+            showRouteButton.setLayoutParams(textLayoutParams);
         }
 
-        @SuppressLint({"SetTextI18n", "DefaultLocale"})
-        private void processDataToViews(ActivityData data) {
-            Log.d("function_entry", "processDataToViews " + data.getActivityType());
+        private void insertActivityEntryToLayout() {
+            Log.d("function_entry", "insertActivityEntryToLayout");
 
-            activityTypeTextView.setText("Activity: " +
-                    data.getActivityType());
+            cardLayout.addView(activityTypeTextView);
+            cardLayout.addView(activityStartTimeTextView);
+            cardLayout.addView(activityDurationTextView);
+            cardLayout.addView(activityDistanceTraveledTextView);
+            cardLayout.addView(averagePaceTextView);
+            cardLayout.addView(averageVelocityTextView);
+            cardLayout.addView(distanceTravelledChart);
+            cardLayout.addView(paceChart);
+            cardLayout.addView(showRouteButton);
+            cardLayout.setId(mActivityId);
+            card.addView(cardLayout);
+            cardContainer.addView(card, 0);
 
-            activityStartTimeTextView.setText("Date and time: " +
-                    getDateTimeStr(data.getStartTime()));
+            showRouteButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showRoute(v);
+                }
+            });
+        }
 
-            activityDurationTextView.setText("Duration: " +
-                    String.format("%02d:%02d",
-                            (int) (data.getDuration() / 60),
-                            (int) (data.getDuration() % 60)));
+        private String getDateTimeStr(long timeMillis) {
+            Log.d("function_entry", "getDateTimeStr");
 
-            activityDistanceTraveledTextView.setText("Distance traveled: " +
-                    String.format("%.2f", data.getDistance()) + "m");
+            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+            Date resultDate = new Date(timeMillis);
 
-            averageVelocityTextView.setText("Avg velocity: " +
-                    String.format("%.2f", data.getDistance() / data.getDuration()) + "m/s");
-
-            VelocityData velocityData = analyzeTimePlaceDataForVelocity(data.getTimePlaces());
-
-            maxVelocityTextView.setText("Max velocity: " +
-                    String.format("%.2f", velocityData.getMaxVelocity()) + "m/s");
-
-            setupLineChart(stChart, generateTimePlaceData(data.getTimePlaces()));
-            setupLineChart(vtChart, generateVelocityData(velocityData));
+            return sdf.format(resultDate);
         }
 
         private void setupLineChart(LineChart lineChart, LineData chartData) {
@@ -271,52 +339,33 @@ public class MainActivity extends AppCompatActivity {
             xAxis.setGranularity(1f);
             xAxis.setAxisMaximum(chartData.getXMax());
 
+            xAxis.setValueFormatter(new ValueFormatter() {
+                @Override
+                public String getFormattedValue(float value) {
+                    return String.format(Locale.getDefault(),
+                            "%02d:%02d", value / 60, value % 60);
+                }
+            });
+
             leftAxis.setDrawGridLines(false);
             leftAxis.setAxisMinimum(0f);
+
+            lineChart.getAxisRight().setEnabled(false);
 
             lineChart.setData(chartData);
             lineChart.invalidate();
         }
 
-        private LineData generateTimePlaceData(ArrayList<TimePlace> data) {
-            Log.d("function_entry", "generateTimePlaceData");
-
+        private LineData generateDistanceTravelledData() {
             LineData d = new LineData();
-            ArrayList<Entry> entries = new ArrayList<>();
-            float currentDistance = 0;
-            long startTime;
-            float timeDiffSeconds;
-            float[] distanceResult = new float[1];
-            double prevPosLatitude = data.get(0).getLatitude();
-            double prevPosLongitude = data.get(0).getLongitude();
-            long prevPosTime = startTime = data.get(0).getTime();
 
-            entries.add(new Entry(0, 0));
-
-            for (TimePlace it : data) {
-                timeDiffSeconds = (it.getTime() - prevPosTime) / 1000;
-                if (timeDiffSeconds == 0)
-                    continue;
-
-                Location.distanceBetween(prevPosLatitude, prevPosLongitude,
-                        it.getLatitude(), it.getLongitude(), distanceResult);
-
-                currentDistance = currentDistance + distanceResult[0];
-
-                Log.d("generateTimePlaceData", "Add entry: " + currentDistance + ", " + (it.getTime() - startTime) / 1000);
-                entries.add(new Entry((it.getTime() - startTime) / 1000, currentDistance));
-
-                prevPosLatitude = it.getLatitude();
-                prevPosLongitude = it.getLongitude();
-                prevPosTime = it.getTime();
-            }
-
-            LineDataSet set = new LineDataSet(entries, "Distance");
+            LineDataSet set = new LineDataSet(mDistanceEntries,
+                    "x:time(min:sec), y:distance travelled(m)");
             set.setColor(Color.GREEN);
             set.setLineWidth(2.5f);
-            set.setCircleColor(Color.GREEN);
-            set.setCircleRadius(2.5f);
+            set.setDrawCircles(false);
             set.setFillColor(Color.GREEN);
+            set.setDrawFilled(true);
             set.setDrawValues(true);
             set.setValueTextSize(10f);
             set.setValueTextColor(Color.GREEN);
@@ -326,25 +375,16 @@ public class MainActivity extends AppCompatActivity {
             return d;
         }
 
-        private LineData generateVelocityData(VelocityData data) {
-            Log.d("function_entry", "generateVelocityData");
-
+        private LineData generatePaceData() {
             LineData d = new LineData();
-            ArrayList<Entry> entries = new ArrayList<>();
 
-            entries.add(new Entry(0, 0));
-
-            for (Pair<Float, Long> it : data.getVelocityInfo()) {
-                Log.d("generateVelocityData", "Add entry: " + it.first + ", " + it.second);
-                entries.add(new Entry(it.second, it.first));
-            }
-
-            LineDataSet set = new LineDataSet(entries, "Velocity");
+            LineDataSet set = new LineDataSet(mPaceEntries,
+                    "x:time(min:sec), y:Pace(min/km)");
             set.setColor(Color.MAGENTA);
             set.setLineWidth(2.5f);
-            set.setCircleColor(Color.MAGENTA);
-            set.setCircleRadius(2.5f);
+            set.setDrawCircles(false);
             set.setFillColor(Color.MAGENTA);
+            set.setDrawFilled(true);
             set.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
             set.setDrawValues(true);
             set.setValueTextSize(10f);
@@ -353,65 +393,6 @@ public class MainActivity extends AppCompatActivity {
             d.addDataSet(set);
 
             return d;
-        }
-
-        private void insertActivityEntryToLayout() {
-            Log.d("function_entry", "insertActivityEntryToLayout");
-
-            cardLayout.addView(activityTypeTextView);
-            cardLayout.addView(activityStartTimeTextView);
-            cardLayout.addView(activityDurationTextView);
-            cardLayout.addView(activityDistanceTraveledTextView);
-            cardLayout.addView(averageVelocityTextView);
-            cardLayout.addView(maxVelocityTextView);
-            cardLayout.addView(stChart);
-            cardLayout.addView(vtChart);
-            card.addView(cardLayout);
-            cardContainer.addView(card, 0);
-        }
-
-        private String getDateTimeStr(long timeMillis) {
-            Log.d("function_entry", "getDateTimeStr");
-
-            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
-            Date resultDate = new Date(timeMillis);
-
-            return sdf.format(resultDate);
-        }
-
-        private VelocityData analyzeTimePlaceDataForVelocity(ArrayList<TimePlace> timePlaces) {
-            Log.d("function_entry", "analyzeTimePlaceDataForVelocity");
-            ArrayList<Pair<Float, Long>> velocityInfo = new ArrayList<>();
-            float maxVelocity = 0, currentVelocity;
-            long startTime;
-            float timeDiffSeconds;
-            float[] distanceResult = new float[1];
-
-            double prevPosLatitude = timePlaces.get(0).getLatitude();
-            double prevPosLongitude = timePlaces.get(0).getLongitude();
-            long prevPosTime = startTime = timePlaces.get(0).getTime();
-
-            for (TimePlace it : timePlaces) {
-                timeDiffSeconds = (float)(it.getTime() - prevPosTime) / 1000;
-                if (timeDiffSeconds == 0)
-                    continue;
-
-                Location.distanceBetween(prevPosLatitude, prevPosLongitude,
-                        it.getLatitude(), it.getLongitude(), distanceResult);
-
-                currentVelocity = distanceResult[0] / timeDiffSeconds;
-                velocityInfo.add(new Pair<>(currentVelocity, (it.getTime() - startTime) / 1000));
-
-                prevPosLatitude = it.getLatitude();
-                prevPosLongitude = it.getLongitude();
-                prevPosTime = it.getTime();
-
-                if (currentVelocity > maxVelocity) {
-                    maxVelocity = currentVelocity;
-                }
-            }
-
-            return new VelocityData(velocityInfo, maxVelocity);
         }
     }
 
