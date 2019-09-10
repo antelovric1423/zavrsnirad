@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -40,7 +41,6 @@ public class MainActivity extends AppCompatActivity {
     private DatabaseHelper mDatabaseHelper;
     private ActivityCardCreator mCardCreator;
 
-    private FloatingActionButton FABRun, FABWalk, FABDrive;
     private CardView directionsContainer;
 
     @Override
@@ -56,15 +56,17 @@ public class MainActivity extends AppCompatActivity {
         ArrayList<ActivityData> activityList = mDatabaseHelper.getAllActivities();
         for (ActivityData it : activityList) {
             if (it.getTimePlaces().size() != 0) {
+                Log.d("Processing activity", "Activity type: " + it.getActivityType());
                 processActivityData(it);
             }
         }
     }
 
     private void setViewReferences() {
-        FABWalk = (FloatingActionButton) findViewById(R.id.fab_walk);
-        FABRun = (FloatingActionButton) findViewById(R.id.fab_run);
-        FABDrive = (FloatingActionButton) findViewById(R.id.fab_drive);
+        FloatingActionButton FABRun, FABWalk, FABDrive;
+        FABWalk = findViewById(R.id.fab_walk);
+        FABRun = findViewById(R.id.fab_run);
+        FABDrive = findViewById(R.id.fab_drive);
 
         directionsContainer = findViewById(R.id.directionsContainer);
 
@@ -225,6 +227,8 @@ public class MainActivity extends AppCompatActivity {
                 mDistanceEntries.add(new Entry(timePassed, mDistance));
                 mDistanceEntries.add(new Entry(timePassed, mDistance));
 
+                mPaceEntries.add(new Entry(timePassed, (timeDiffSeconds / 60) / (distanceResult[0] / 1000)));
+
                 prevPosLatitude = it.getLatitude();
                 prevPosLongitude = it.getLongitude();
                 prevPosTime = it.getTime();
@@ -343,7 +347,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public String getFormattedValue(float value) {
                     return String.format(Locale.getDefault(),
-                            "%02d:%02d", value / 60, value % 60);
+                            "%02d:%02d", (int) value / 60, (int) value % 60);
                 }
             });
 
@@ -360,7 +364,7 @@ public class MainActivity extends AppCompatActivity {
             LineData d = new LineData();
 
             LineDataSet set = new LineDataSet(mDistanceEntries,
-                    "x:time(min:sec), y:distance travelled(m)");
+                    "x:Time(min:sec), y:Distance(m)");
             set.setColor(Color.GREEN);
             set.setLineWidth(2.5f);
             set.setDrawCircles(false);
@@ -379,7 +383,7 @@ public class MainActivity extends AppCompatActivity {
             LineData d = new LineData();
 
             LineDataSet set = new LineDataSet(mPaceEntries,
-                    "x:time(min:sec), y:Pace(min/km)");
+                    "x:Time(min:sec), y:Pace(min/km)");
             set.setColor(Color.MAGENTA);
             set.setLineWidth(2.5f);
             set.setDrawCircles(false);

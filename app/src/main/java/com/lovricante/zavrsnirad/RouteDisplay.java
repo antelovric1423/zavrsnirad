@@ -7,6 +7,7 @@ import android.view.View;
 
 import androidx.fragment.app.FragmentActivity;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -52,6 +53,7 @@ public class RouteDisplay extends FragmentActivity implements OnMapReadyCallback
             if (firstRun) {
                 mMap.addMarker(new MarkerOptions()
                         .position(it.getPlace()).title("Starting position"));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(it.getPlace(), 12f));
                 firstRun = false;
                 continue;
             }
@@ -64,6 +66,9 @@ public class RouteDisplay extends FragmentActivity implements OnMapReadyCallback
 
             prevTimePlace = it;
         }
+
+        mMap.addMarker(new MarkerOptions()
+                .position(prevTimePlace.getPlace()).title("Finish position"));
     }
 
     public void returnToMainActivity() {

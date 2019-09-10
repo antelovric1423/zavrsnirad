@@ -1,9 +1,8 @@
 package com.lovricante.zavrsnirad;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
-public class ActivityData implements Serializable {
+public class ActivityData {
     private int activityId;
     private String activityType;
     private ArrayList<TimePlace> timePlaces;

@@ -37,11 +37,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_NAME_ACTIVITIES + " (" +
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_NAME_ACTIVITIES +
+                " (" +
                 ACTIVITY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 ACTIVITY_TYPE + " TEXT);");
 
-        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_NAME_POSITION_DATA + " (" +
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_NAME_POSITION_DATA +
+                " (" +
                 POSITION_DATA_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 LATITUDE + " REAL NOT NULL, " +
                 LONGITUDE + " REAL NOT NULL, " +
